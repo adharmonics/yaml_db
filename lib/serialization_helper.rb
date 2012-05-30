@@ -12,7 +12,10 @@ module SerializationHelper
 
     def dump(filename)
       disable_logger
-      @dumper.dump(File.new(filename, "w"))
+      f = File.new(filename, "w")
+      @dumper.dump(f)
+      f.flush
+      f.close
       reenable_logger
     end
 
@@ -159,7 +162,7 @@ module SerializationHelper
     end
 
     def self.after_table(io, table)
-
+      io.flush
     end
 
     def self.tables
