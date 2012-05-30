@@ -26,7 +26,9 @@ module SerializationHelper
         io = File.new "#{dirname}/#{table}.#{@extension}", "w"
         @dumper.before_table(io, table)
         @dumper.dump_table io, table
-        @dumper.after_table(io, table)         
+        @dumper.after_table(io, table)
+        io.flush
+        io.close
       end
     end
 
