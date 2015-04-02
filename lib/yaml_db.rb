@@ -116,7 +116,10 @@ module YamlDb
         quoted_values = record.zip(columns).map{|c| c.last.nil? ? nil : ActiveRecord::Base.connection.quote(c.first, c.last)}.compact.join(',')
         ActiveRecord::Base.connection.execute("INSERT INTO #{quoted_table_name} (#{quoted_column_names}) VALUES (#{quoted_values})")
         asset = AssetLibrary.find(record[0])
-        asset.blog_asset = URI.parse(record[image_url_index])
+        image = URI.parse(record[image_url_index])
+        image = URI.parse("http:#{record[image_url_index]}") if image.scheme.nil?
+
+        asset.blog_asset = image
         asset.save
       end
     end
