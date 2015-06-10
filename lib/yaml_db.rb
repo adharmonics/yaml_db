@@ -6,6 +6,10 @@ require 'active_support/core_ext/kernel/reporting'
 require 'rails/railtie'
 
 module YamlDb
+
+  ASSET_LIBRARIES = { "asset_libraries" => {asset: "blog_asset"},
+                 "featured_agents" => {asset: "picture"} }
+
   module Helper
     def self.loader
       YamlDb::Load
@@ -58,9 +62,11 @@ module YamlDb
   class AssetDump < Dump
 
     def self.dump(io)
-      before_table(io, "asset_libraries")
-      dump_table(io, "asset_libraries")
-      after_table(io, "asset_libraries")
+      ASSET_LIBRARIES.keys.each do |table|
+        before_table(io, table)
+        dump_table(io, table)
+        after_table(io, table)
+      end
     end
 
     def self.dump_table_records(io, table)
@@ -70,7 +76,7 @@ module YamlDb
 
       each_table_page(table) do |records|
         records.each do |record|
-          record["image_url"] = AssetLibrary.find(record["id"]).blog_asset.url
+          record["image_url"] = table.classify.constantize.find(record["id"]).send(ASSET_LIBRARIES[table][:asset]).url
         end
         rows = SerializationHelper::Utils.unhash_records(records, column_names)
         io.write(YamlDb::Utils.chunk_records(records))
@@ -87,7 +93,7 @@ module YamlDb
     def self.load_documents(io, truncate = true)
       YAML.load_documents(io) do |ydoc|
         ydoc.keys.each do |table_name|
-          next if ydoc[table_name].nil? || table_name == "asset_libraries"
+          next if ydoc[table_name].nil? || ASSET_LIBRARIES.keys.include?(table_name)
           load_table(table_name, ydoc[table_name], truncate)
         end
       end
@@ -98,7 +104,7 @@ module YamlDb
     def self.load_documents(io, truncate = true)
       YAML.load_documents(io) do |ydoc|
         ydoc.keys.each do |table_name|
-          next unless table_name == "asset_libraries"
+          next unless ASSET_LIBRARIES.keys.include?(table_name)
           load_table(table_name, ydoc[table_name], truncate)
         end
       end
@@ -115,11 +121,11 @@ module YamlDb
       records.each do |record|
         quoted_values = record.zip(columns).map{|c| c.last.nil? ? nil : ActiveRecord::Base.connection.quote(c.first, c.last)}.compact.join(',')
         ActiveRecord::Base.connection.execute("INSERT INTO #{quoted_table_name} (#{quoted_column_names}) VALUES (#{quoted_values})")
-        asset = AssetLibrary.find(record[0])
+        asset = table.classify.constantize.find(record[0])
         image = URI.parse(record[image_url_index])
         image = URI.parse("http:#{record[image_url_index]}") if image.scheme.nil?
 
-        asset.blog_asset = image
+        asset.send("#{ASSET_LIBRARIES[table][:asset]}=", image)
         asset.save
       end
     end
