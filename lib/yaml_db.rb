@@ -7,7 +7,7 @@ require 'rails/railtie'
 
 module YamlDb
 
-  ASSET_LIBRARIES = { "asset_libraries" => {asset: "blog_asset"},
+  ASSET_LIBRARIES = { "content_images" => {asset: "asset"},
                  "featured_agents" => {asset: "picture"} }
 
   module Helper
