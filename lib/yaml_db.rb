@@ -7,8 +7,12 @@ require 'rails/railtie'
 
 module YamlDb
 
-  ASSET_LIBRARIES = { "content_images" => {asset: "asset"},
-                 "featured_agents" => {asset: "picture"} }
+  ASSET_LIBRARIES = {
+    "content_images" => {asset: "asset"},
+    "featured_agents" => {asset: "picture"}
+  }
+
+  REDIS_NAMESPACE = 'zipcode_parameter_value_lists'.freeze
 
   module Helper
     def self.loader
@@ -24,7 +28,6 @@ module YamlDb
     end
   end
 
-
   module Utils
     def self.chunk_records(records)
       yaml = [ records ].to_yaml
@@ -32,11 +35,9 @@ module YamlDb
       yaml.sub!('- - -', '  - -')
       yaml
     end
-
   end
 
   class Dump < SerializationHelper::Dump
-
     def self.dump_table_columns(io, table)
       io.write("\n")
       io.write({ table => { 'columns' => table_column_names(table) } }.to_yaml)
@@ -56,11 +57,9 @@ module YamlDb
     def self.table_record_header(io)
       io.write("  records: \n")
     end
-
   end
 
   class AssetDump < Dump
-
     def self.dump(io)
       ASSET_LIBRARIES.keys.each do |table|
         before_table(io, table)
@@ -86,14 +85,24 @@ module YamlDb
     def self.table_column_names(table)
       ActiveRecord::Base.connection.columns(table).map { |c| c.name }.concat(["image_url"])
     end
+  end
 
+  class RedisDump
+    def self.dump(io)
+      keys = Redis.current.keys('zipcode_parameter_value:*')
+      values = Redis.current.mget(keys)
+      hash = keys.zip(values).to_h
+      io.write("zipcode_parameter_value_lists: \n")
+      # write these more better
+      io.write(YamlDb::Utils.chunk_records(hash))
+    end
   end
 
   class Load < SerializationHelper::Load
     def self.load_documents(io, truncate = true)
       YAML.load_documents(io) do |ydoc|
         ydoc.keys.each do |table_name|
-          next if ydoc[table_name].nil? || ASSET_LIBRARIES.keys.include?(table_name)
+          next if ydoc[table_name].nil? || ASSET_LIBRARIES.keys.include?(table_name) || table_name == REDIS_NAMESPACE
           load_table(table_name, ydoc[table_name], truncate)
         end
       end
@@ -131,10 +140,15 @@ module YamlDb
     end
   end
 
+  class RedisLoad
+    def self.load(io)
+      # get the zipcode parameter values out of the io, and write them to Redis.current
+    end
+  end
+
   class Railtie < Rails::Railtie
     rake_tasks do
-      load File.expand_path('../tasks/yaml_db_tasks.rake',
-__FILE__)
+      load File.expand_path('../tasks/yaml_db_tasks.rake', __FILE__)
     end
   end
 

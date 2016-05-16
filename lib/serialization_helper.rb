@@ -41,6 +41,15 @@ module SerializationHelper
       reenable_logger
     end
 
+    def dump_redis_zipcode_list(filename)
+      disable_logger
+      f = File.open(filename, 'a')
+      YamlDb::RedisDump.dump(f)
+      f.flush
+      f.close
+      reenable_logger
+    end
+
     def load(filename, truncate = true)
       disable_logger
       @loader.load(File.new(filename, "r"), truncate)
@@ -53,13 +62,17 @@ module SerializationHelper
           next
         end
         @loader.load(File.new("#{dirname}/#{filename}", "r"), truncate)
-      end   
+      end
     end
 
     def load_assets(filename, truncate = true)
       disable_logger
       YamlDb::AssetLoad.load(File.new(filename, "r"), truncate)
       reenable_logger
+    end
+
+    def load_zipcode_parameter_lists(filename)
+      YamlDb::RedisLoad.load(File.new(filename, 'r'))
     end
 
     def disable_logger
@@ -71,7 +84,7 @@ module SerializationHelper
       ActiveRecord::Base.logger = @@old_logger
     end
   end
-  
+
   class Load
     def self.load(io, truncate = true)
       ActiveRecord::Base.connection.transaction do
@@ -113,9 +126,7 @@ module SerializationHelper
       if ActiveRecord::Base.connection.respond_to?(:reset_pk_sequence!)
         ActiveRecord::Base.connection.reset_pk_sequence!(table_name)
       end
-    end    
-
-      
+    end
   end
 
   module Utils
@@ -158,7 +169,6 @@ module SerializationHelper
     def self.quote_table(table)
       ActiveRecord::Base.connection.quote_table_name(table)
     end
-
   end
 
   class Dump
