@@ -7,8 +7,10 @@ require 'rails/railtie'
 
 module YamlDb
 
-  ASSET_LIBRARIES = { "content_images" => {asset: "asset"},
-                 "featured_agents" => {asset: "picture"} }
+  ASSET_LIBRARIES = {
+    "content_images" => { asset: "asset" },
+    "featured_agents" => { asset: "picture" }
+  }
 
   module Helper
     def self.loader
@@ -23,7 +25,6 @@ module YamlDb
       "yml"
     end
   end
-
 
   module Utils
     def self.chunk_records(records)
@@ -78,8 +79,8 @@ module YamlDb
         records.each do |record|
           record["image_url"] = table.classify.constantize.find(record["id"]).send(ASSET_LIBRARIES[table][:asset]).url
         end
-        rows = SerializationHelper::Utils.unhash_records(records, column_names)
-        io.write(YamlDb::Utils.chunk_records(records))
+        rows = SerializationHelper::Utils.unhash_records(records.to_a, column_names)
+        io.write(YamlDb::Utils.chunk_records(rows))
       end
     end
 

@@ -11,12 +11,10 @@ module SerializationHelper
     end
 
     def dump(filename)
-      disable_logger
       f = File.new(filename, "w")
       @dumper.dump(f)
       f.flush
       f.close
-      reenable_logger
     end
 
     def dump_to_dir(dirname)
@@ -33,18 +31,14 @@ module SerializationHelper
     end
 
     def dump_assets(filename)
-      disable_logger
       f = File.open(filename, "a")
       YamlDb::AssetDump.dump(f)
       f.flush
       f.close
-      reenable_logger
     end
 
     def load(filename, truncate = true)
-      disable_logger
       @loader.load(File.new(filename, "r"), truncate)
-      reenable_logger
     end
 
     def load_from_dir(dirname, truncate = true)
@@ -53,25 +47,15 @@ module SerializationHelper
           next
         end
         @loader.load(File.new("#{dirname}/#{filename}", "r"), truncate)
-      end   
+      end
     end
 
     def load_assets(filename, truncate = true)
-      disable_logger
       YamlDb::AssetLoad.load(File.new(filename, "r"), truncate)
-      reenable_logger
     end
 
-    def disable_logger
-      @@old_logger = ActiveRecord::Base.logger
-      ActiveRecord::Base.logger = nil
-    end
-
-    def reenable_logger
-      ActiveRecord::Base.logger = @@old_logger
-    end
   end
-  
+
   class Load
     def self.load(io, truncate = true)
       ActiveRecord::Base.connection.transaction do
@@ -113,9 +97,8 @@ module SerializationHelper
       if ActiveRecord::Base.connection.respond_to?(:reset_pk_sequence!)
         ActiveRecord::Base.connection.reset_pk_sequence!(table_name)
       end
-    end    
+    end
 
-      
   end
 
   module Utils
@@ -167,7 +150,6 @@ module SerializationHelper
     end
 
     def self.before_table(io, table)
-
     end
 
     def self.dump(io)
@@ -204,7 +186,7 @@ module SerializationHelper
       pages = (total_count.to_f / records_per_page).ceil - 1
       id = table_column_names(table).first
       boolean_columns = SerializationHelper::Utils.boolean_columns(table)
-      quoted_table_name = SerializationHelper::Utils.quote_table(table)
+      SerializationHelper::Utils.quote_table(table)
 
       (0..pages).to_a.each do |page|
         query = Arel::Table.new(table).order(id).skip(records_per_page*page).take(records_per_page).project(Arel.sql('*'))
